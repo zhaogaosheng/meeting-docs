@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中国党政会议文件聚合平台</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f5f7;
+  --card-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+  --border: #e5e5e7;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #86868b;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --tag-bg: #f0f0f5;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --radius: 12px;
+  --sidebar-width: 260px;
+  --green: #059669;
+  --orange: #d97706;
+  --purple: #7c3aed;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text-primary); line-height: 1.5; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.app { display: flex; min-height: 100vh; }
+
+/* ===== 侧边栏 ===== */
+.sidebar {
+  width: var(--sidebar-width); background: var(--sidebar-bg); border-right: 1px solid var(--border);
+  position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100;
+  padding: 24px 16px;
+}
+.sidebar-logo { font-size: 18px; font-weight: 700; margin-bottom: 24px; color: var(--text-primary); }
+.sidebar-logo span { color: var(--accent); }
+.sidebar-section { margin-bottom: 8px; }
+.sidebar-category {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  transition: background 0.15s;
+}
+.sidebar-category:hover { background: var(--tag-bg); }
+.sidebar-category.active { background: var(--accent); color: #fff; }
+.sidebar-category .count {
+  font-size: 11px; font-weight: 400; background: var(--tag-bg); color: var(--text-secondary);
+  padding: 1px 8px; border-radius: 10px;
+}
+.sidebar-category.active .count { background: rgba(255,255,255,0.2); color: #fff; }
+.sidebar-info { padding: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.sidebar-info div { font-size: 12px; color: var(--text-tertiary); line-height: 1.6; }
+
+/* ===== 主内容 ===== */
+.main { margin-left: var(--sidebar-width); flex: 1; padding: 24px 32px; max-width: calc(100vw - var(--sidebar-width)); }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.header h1 { font-size: 24px; font-weight: 700; }
+.header-info { font-size: 13px; color: var(--text-secondary); }
+
+/* ===== 搜索 ===== */
+.filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.search-box {
+  flex: 1; min-width: 200px; padding: 10px 16px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 14px; outline: none; background: var(--card-bg);
+  transition: border-color 0.15s;
+}
+.search-box:focus { border-color: var(--accent); }
+.filter-select {
+  padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; outline: none; background: var(--card-bg); cursor: pointer;
+  color: var(--text-primary);
+}
+
+/* ===== 会议事件卡片 ===== */
+.event-list { display: flex; flex-direction: column; gap: 16px; }
+.event-card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid transparent; }
+.event-card:hover { border-color: var(--border); }
+.event-header { padding: 16px 24px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.15s; }
+.event-header:hover { background: var(--tag-bg); }
+.event-header-left { display: flex; align-items: center; gap: 12px; }
+.event-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.event-icon.blue { background: #dbeafe; }
+.event-icon.green { background: #d1fae5; }
+.event-icon.orange { background: #fef3c7; }
+.event-icon.purple { background: #ede9fe; }
+.event-meta { display: flex; flex-direction: column; }
+.event-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.event-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.event-count-badge { font-size: 11px; color: var(--text-secondary); background: var(--tag-bg); padding: 2px 10px; border-radius: 10px; }
+.event-toggle { font-size: 14px; color: var(--text-tertiary); margin-left: 8px; }
+.update-btn {
+  font-size: 11px; color: #fff; background: var(--green); border: none;
+  padding: 3px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap;
+}
+.update-btn:hover { background: #047857; }
+.update-btn.loading { opacity: 0.6; pointer-events: none; }
+.update-btn.done { background: var(--accent); }
+.update-toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: #1d1d1f; color: #fff; padding: 12px 24px; border-radius: 8px;
+  font-size: 13px; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  max-width: 80vw; text-align: center;
+}
+
+/* ===== 文件列表 ===== */
+.file-list { border-top: 1px solid var(--border); }
+.file-item { padding: 12px 24px 12px 72px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: background 0.1s; border-bottom: 1px solid var(--border); }
+.file-item:last-child { border-bottom: none; }
+.file-item:hover { background: var(--tag-bg); }
+.file-label { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+.file-label.core { background: #dbeafe; color: var(--accent); }
+.file-label.support { background: #d1fae5; color: var(--green); }
+.file-label.ref { background: var(--tag-bg); color: var(--text-secondary); }
+.file-info { flex: 1; min-width: 0; }
+.file-title { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.file-source { font-size: 10px; color: var(--text-tertiary); background: var(--tag-bg); padding: 1px 6px; border-radius: 3px; }
+.file-link { font-size: 11px; color: var(--accent); white-space: nowrap; margin-left: 4px; }
+.file-read-btn { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+.file-confidence.high { background: #d1fae5; color: var(--green); }
+.file-confidence.medium { background: #fef3c7; color: var(--orange); }
+
+/* ===== 阅读弹窗 ===== */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  padding: 40px;
+}
+.modal {
+  background: #fff; border-radius: 16px; width: 100%; max-width: 900px;
+  max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-header {
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  flex-shrink: 0;
+}
+.modal-header h2 { font-size: 18px; font-weight: 600; line-height: 1.4; flex: 1; }
+.modal-close {
+  font-size: 20px; color: var(--text-tertiary); cursor: pointer; background: none; border: none;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; flex-shrink: 0;
+}
+.modal-close:hover { background: var(--tag-bg); color: var(--text-primary); }
+.modal-body {
+  padding: 24px; overflow-y: auto; flex: 1;
+  font-size: 15px; line-height: 1.9; color: var(--text-primary);
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.modal-footer {
+  padding: 16px 24px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--text-tertiary); flex-shrink: 0;
+}
+.modal-footer a { color: var(--accent); }
+
+/* ===== 空状态 & 加载 ===== */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-tertiary); }
+.empty-state p { font-size: 14px; }
+.loading { text-align: center; padding: 60px; color: var(--text-tertiary); }
+.spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .sidebar { width: 100%; position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
+  .main { margin-left: 0; padding: 16px; max-width: 100%; }
+  .file-item { padding: 12px 16px; flex-wrap: wrap; }
+  .modal-overlay { padding: 16px; }
+  .modal-header h2 { font-size: 15px; }
+  .modal-body { font-size: 14px; padding: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">📋 <span>会议文件</span>聚合</div>
+    <div class="sidebar-section" v-for="cat in categories" :key="cat.id">
+      <div class="sidebar-category" :class="{ active: selectedCategory === cat.id }" @click="toggleCategory(cat.id)">
+        <span>{{ cat.name }}</span>
+        <span class="count">{{ cat.count }}</span>
+      </div>
+    </div>
+    <div class="sidebar-info">
+      <div>数据来源：新华社、中国政府网、国新网</div>
+      <div style="margin-top:4px;">最近更新：{{ lastUpdated }}</div>
+      <div style="margin-top:8px;font-size:11px;">精确链接: {{ exactLinkCount }} 条</div>
+    </div>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="main">
+    <div class="header">
+      <div>
+        <h1>{{ currentTitle }}</h1>
+        <div class="header-info">共 {{ eventGroups.length }} 个会议事件</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <input class="search-box" type="text" placeholder="搜索会议或文件..." v-model="searchText">
+      <select class="filter-select" v-model="yearFilter">
+        <option value="">全部年份</option>
+        <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+      </select>
+    </div>
+
+    <div class="event-list" v-if="!loading && eventGroups.length > 0">
+      <div class="event-card" v-for="group in eventGroups" :key="group.eventId">
+        <div class="event-header" @click="group.expanded = !group.expanded">
+          <div class="event-header-left">
+            <div class="event-icon" :class="group.iconColor">{{ group.icon }}</div>
+            <div class="event-meta">
+              <span class="event-name">{{ group.eventName }}</span>
+              <span class="event-sub">{{ group.eventDate }}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="event-count-badge">{{ group.files.length }} 份文件</span>
+            <button class="update-btn" @click.stop="updateCategory(group.category)" title="搜索新华网最新文件">🔄 更新</button>
+            <span class="event-toggle">{{ group.expanded ? '收起' : '展开' }}</span>
+          </div>
+        </div>
+        <div class="file-list" v-if="group.expanded">
+          <div class="file-item" v-for="file in group.files" :key="file.id">
+            <span class="file-label" :class="file.fileLabel === '核心文件' ? 'core' : (file.fileLabel === '配套文件' ? 'support' : 'ref')">{{ file.fileLabel || file.type }}</span>
+            <div class="file-info" @click="openLink(file.link)">
+              <div class="file-title">{{ file.title }}</div>
+              <div class="file-desc">{{ file.desc }}</div>
+            </div>
+            <div class="file-meta">
+              <span class="file-source">{{ file.source }}</span>
+              <span class="file-confidence" :class="file.confidence === 'high' ? 'high' : 'medium'">{{ file.confidence === 'high' ? '官方' : '转载' }}</span>
+              <span class="file-link" @click="openLink(file.link)">查看 →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" v-if="!loading && eventGroups.length === 0">
+      <p>暂无匹配的会议文件</p>
+    </div>
+
+    <div class="loading" v-if="loading">
+      <div class="spinner"></div>
+      <div>加载中...</div>
+    </div>
+  </main>
+
+  <!-- 阅读弹窗 -->
+  <div class="modal-overlay" v-if="readerFile" @click.self="closeReader">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>{{ readerFile.title }}</h2>
+        <button class="modal-close" @click="closeReader">✕</button>
+      </div>
+      <div class="modal-body">{{ readerFile._content }}</div>
+      <div class="modal-footer">
+        <span>共 {{ readerFile._content ? readerFile._content.length : 0 }} 字</span>
+        <a :href="readerFile.link" target="_blank">查看原文 →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast提示 -->
+  <div class="update-toast" v-if="toastMsg">{{ toastMsg }}</div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, computed, onMounted } = Vue;
+
+const app = createApp({
+  setup() {
+    const allData = ref([]);
+    const loading = ref(true);
+    const searchText = ref('');
+    const selectedCategory = ref('all');
+    const yearFilter = ref('');
+    const lastUpdated = ref('');
+    const readerFile = ref(null);
+
+    const hasContentCount = computed(() => { return 0; });
+    const exactLinkCount = computed(() => {
+      return allData.value.filter(d => d.link && (d.link.includes('news.cn') || d.link.includes('xinhuanet.com') || d.link.includes('gov.cn')) && !d.link.includes('search')).length;
+    });
+
+    const eventGroups = computed(() => {
+      let items = allData.value;
+      if (selectedCategory.value !== 'all') {
+        items = items.filter(d => d.category === selectedCategory.value);
+      }
+      if (searchText.value) {
+        const q = searchText.value.toLowerCase();
+        items = items.filter(d =>
+          d.title.toLowerCase().includes(q) ||
+          d.meeting.toLowerCase().includes(q) ||
+          d.desc.toLowerCase().includes(q)
+        );
+      }
+      if (yearFilter.value) {
+        items = items.filter(d => d.date.startsWith(yearFilter.value));
+      }
+      const groups = {};
+      items.forEach(item => {
+        const key = item.eventGroup || item.meeting + '|' + item.date.slice(0, 7);
+        if (!groups[key]) {
+          groups[key] = {
+            eventId: key, eventName: item.meeting, eventDate: item.date,
+            icon: getIcon(item.category), iconColor: getIconColor(item.category),
+            expanded: true, files: [], sortDate: item.sortDate
+          };
+        }
+        groups[key].files.push(item);
+        if (item.sortDate < groups[key].sortDate) {
+          groups[key].sortDate = item.sortDate;
+          groups[key].eventDate = item.date;
+        }
+      });
+      return Object.values(groups).sort((a, b) => b.sortDate - a.sortDate);
+    });
+
+    const categories = computed(() => {
+      const counts = {};
+      allData.value.forEach(d => { counts[d.category] = (counts[d.category] || 0) + 1; });
+      return [
+        { id: 'all', name: '全部会议', count: allData.value.length },
+        { id: '党代会', name: '党代会', count: counts['党代会'] || 0 },
+        { id: '中央全会', name: '中央全会', count: counts['中央全会'] || 0 },
+        { id: '中央经济工作会议', name: '中央经济工作会议', count: counts['中央经济工作会议'] || 0 },
+        { id: '全国两会', name: '全国两会', count: counts['全国两会'] || 0 },
+        { id: '中央政治局会议', name: '中央政治局会议', count: counts['中央政治局会议'] || 0 },
+        { id: '中央财经委会议', name: '中央财经委会议', count: counts['中央财经委会议'] || 0 },
+        { id: '中央深改委会议', name: '中央深改委会议', count: counts['中央深改委会议'] || 0 },
+        { id: '中央金融工作会议', name: '中央金融工作会议', count: counts['中央金融工作会议'] || 0 },
+        { id: '国务院常务会议', name: '国务院常务会议', count: counts['国务院常务会议'] || 0 },
+        { id: '国新办发布会', name: '国新办发布会', count: counts['国新办发布会'] || 0 },
+      ];
+    });
+
+    const currentTitle = computed(() => {
+      const cat = categories.value.find(c => c.id === selectedCategory.value);
+      return cat ? cat.name : '全部会议';
+    });
+
+    const availableYears = computed(() => {
+      const years = new Set();
+      allData.value.forEach(d => { const m = d.date.match(/(\d{4})/); if (m) years.add(m[1]); });
+      return [...years].sort().reverse();
+    });
+
+    function toggleCategory(id) { selectedCategory.value = selectedCategory.value === id ? 'all' : id; }
+    function openLink(url) { window.open(url, '_blank'); }
+    function openReader(file) { readerFile.value = file; }
+    function closeReader() { readerFile.value = null; }
+
+    function getIcon(c) {
+      const m = {'党代会':'📜','中央全会':'📋','中央经济工作会议':'📊','全国两会':'🏛️','中央政治局会议':'📌','中央财经委会议':'💰','中央深改委会议':'🔄','中央金融工作会议':'🏦','国务院常务会议':'📑','国新办发布会':'🎤'};
+      return m[c] || '📄';
+    }
+    function getIconColor(c) {
+      const m = {'党代会':'red','中央全会':'blue','中央经济工作会议':'green','全国两会':'purple','中央政治局会议':'orange','中央财经委会议':'green','中央深改委会议':'blue','中央金融工作会议':'orange','国务院常务会议':'blue','国新办发布会':'purple'};
+      return m[c] || 'blue';
+    }
+
+    // ===== 手动更新功能 =====
+    const updating = ref({});
+    const toastMsg = ref('');
+
+    async function updateCategory(category) {
+      if (updating.value[category]) return;
+      updating.value = { ...updating.value, [category]: true };
+      toastMsg.value = `正在搜索${category}最新文件...`;
+      
+      // 各会议的新华网搜索关键词
+      const searchUrls = {
+        '国务院常务会议': 'https://www.news.cn/search?q=国务院常务会议+李强',
+        '中央政治局会议': 'https://www.news.cn/search?q=中共中央政治局召开会议',
+        '中央经济工作会议': 'https://www.news.cn/search?q=中央经济工作会议',
+        '全国两会': 'https://www.news.cn/search?q=全国两会+政府工作报告',
+        '中央全会': 'https://www.news.cn/search?q=中央委员会+全体会议+公报',
+        '党代会': 'https://www.news.cn/search?q=全国代表大会+报告',
+        '中央财经委会议': 'https://www.news.cn/search?q=中央财经委员会',
+        '中央深改委会议': 'https://www.news.cn/search?q=全面深化改革委员会',
+        '中央金融工作会议': 'https://www.news.cn/search?q=中央金融工作会议',
+        '国新办发布会': 'https://www.news.cn/search?q=国新办+新闻发布会'
+      };
+      
+      const url = searchUrls[category] || 'https://www.news.cn/search?q=' + encodeURIComponent(category);
+      toastMsg.value = `正在打开新华网搜索${category}...`;
+      
+      setTimeout(() => {
+        window.open(url, '_blank');
+        toastMsg.value = '';
+        updating.value = { ...updating.value, [category]: false };
+      }, 500);
+    }
+
+    onMounted(async () => {
+      try {
+        const resp = await fetch('./data.json?_=' + Date.now());
+        const data = await resp.json();
+        allData.value = data.items || [];
+        lastUpdated.value = data.lastUpdated || '';
+      } catch (e) { console.error('加载数据失败:', e); }
+      finally { loading.value = false; }
+    });
+
+    return { allData, loading, searchText, selectedCategory, yearFilter, lastUpdated,
+      categories, currentTitle, availableYears, eventGroups, hasContentCount,
+      readerFile, updating, toastMsg,
+      toggleCategory, openLink, openReader, closeReader, updateCategory, exactLinkCount };
+  }
+});
+
+app.mount('#app');
+</script>
+</body>
+</html>
